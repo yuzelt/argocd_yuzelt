@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: lab-microservice
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: lab-microservice
+spec:
+  type: {{ .Values.service.type }}
+  selector:
+    app: lab-microservice
+  ports:
+    - name: http
+      port: {{ .Values.service.port }}
+      targetPort: {{ .Values.service.targetPort }}
+      nodePort: {{ .Values.service.nodePort }}

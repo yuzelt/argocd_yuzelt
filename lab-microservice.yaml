@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lab-microservice
+  namespace: yuzelt
+  labels:
+    app: lab-microservice
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: lab-microservice
+  template:
+    metadata:
+      labels:
+        app: lab-microservice
+    spec:
+      containers:
+        - name: lab-microservice
+          image: taskin87/lab-microservice:v1   # 🔥 Docker Hub’daki image
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          env:
+            - name: ASPNETCORE_ENVIRONMENT
+              value: "Kubernetes"
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "200m"
+              memory: "256Mi"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: lab-microservice
+  namespace: yuzelt
+  labels:
+    app: lab-microservice
+spec:
+  selector:
+    app: lab-microservice
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080
+  type: ClusterIP

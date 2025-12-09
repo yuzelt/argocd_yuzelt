@@ -1,0 +1,19 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: lab-microservice-ingress
+  namespace: yuzelt
+spec:
+  # Burada doğru ingress class'ı veriyoruz
+  ingressClassName: rke2-ingress-nginx
+  rules:
+    - host: lab-microservice.lab.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: lab-microservice
+                port:
+                  number: 80

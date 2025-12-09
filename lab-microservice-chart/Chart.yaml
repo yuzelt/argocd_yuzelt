@@ -1,0 +1,6 @@
+apiVersion: v2
+name: lab-microservice
+description: Simple .NET microservice for lab (NodePort)
+type: application
+version: 0.1.0      # Chart versiyonu
+appVersion: "1.0.0" # Uygulama versiyonu (serbest)

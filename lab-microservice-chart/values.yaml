@@ -1,0 +1,25 @@
+replicaCount: 3
+
+image:
+  repository: taskin87/lab-microservice
+  tag: "v1"
+  pullPolicy: IfNotPresent
+
+service:
+  type: NodePort
+  port: 80
+  targetPort: 8080
+  nodePort: 30081
+
+resources:
+  requests:
+    cpu: "50m"
+    memory: "64Mi"
+  limits:
+    cpu: "200m"
+    memory: "256Mi"
+
+env:
+  aspnetcoreEnvironment: "Kubernetes"
+
+namespace: "yuzelt"
