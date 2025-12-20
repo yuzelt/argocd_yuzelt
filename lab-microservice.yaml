@@ -2,7 +2,6 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: lab-microservice
-  namespace: yuzelt
   labels:
     app: lab-microservice
 spec:
