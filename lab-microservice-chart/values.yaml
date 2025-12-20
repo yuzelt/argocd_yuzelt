@@ -2,7 +2,7 @@ replicaCount: 3
 
 image:
   repository: taskin87/lab-microservice
-  tag: "v1"
+  tag: "v1.2.3"
   pullPolicy: IfNotPresent
 
 service:
