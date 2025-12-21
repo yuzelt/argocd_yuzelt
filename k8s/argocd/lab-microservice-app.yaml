@@ -21,8 +21,7 @@ spec:
         - name: image.repository
           value: taskin87/lab-microservice
         - name: image.tag
-          value: v1.2.10
-
+          value: v1.2.14
   syncPolicy:
     automated:
       prune: true
