@@ -17,21 +17,26 @@ jobs:
       contents: write
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          persist-credentials: true
-
+      # 1) Tag adını al
       - name: Set TAG
         run: echo "TAG=${GITHUB_REF_NAME}" >> $GITHUB_ENV
 
+      # 2) ÖNEMLİ: Tag değil, MAIN checkout edeceğiz (push yapabilmek için)
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: true
+
+      # 3) Docker login
       - name: Login Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+      # 4) Build & push image (tag üzerinden)
       - name: Build & Push image
         uses: docker/build-push-action@v6
         with:
@@ -40,28 +45,42 @@ jobs:
           tags: |
             ${{ env.IMAGE_REPO }}:${{ env.TAG }}
 
+      # 5) MAIN üzerinde dosyayı güncelle
       - name: Update Argo Application parameter image.tag
         run: |
-          set -e
+          set -euo pipefail
           python - << 'PY'
           import os, re
+
           f = os.environ["APP_FILE"]
           tag = os.environ["TAG"]
-          s = open(f, "r", encoding="utf-8").read()
-          pat = r'(-\s*name:\s*image\.tag\s*\n\s*value:\s*)([^\n]+)'
+
+          with open(f, "r", encoding="utf-8") as fp:
+              s = fp.read()
+
+          pat = r'(^\s*-\s*name:\s*image\.tag\s*\n\s*value:\s*)([^\n]+)\s*$'
           if not re.search(pat, s, flags=re.M):
-            raise SystemExit("image.tag parameter not found in " + f)
-          s = re.sub(pat, r'\g<1>' + tag, s, flags=re.M)
-          open(f, "w", encoding="utf-8").write(s)
-          print("Updated image.tag ->", tag)
+              raise SystemExit(f"image.tag parameter not found in {f}")
+
+          s2 = re.sub(pat, r"\g<1>"+tag, s, flags=re.M)
+
+          if s2 == s:
+              print("No change needed (already same tag).")
+          else:
+              with open(f, "w", encoding="utf-8") as fp:
+                  fp.write(s2)
+              print("Updated image.tag ->", tag)
           PY
 
+      # 6) Commit & push (MAIN’e)
       - name: Commit & push updated tag
         run: |
-          set -e
+          set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+
           git add "${APP_FILE}"
-          git commit -m "chore(release): deploy ${TAG}" || echo "No changes to commit"
-          # detached HEAD fix:
-          git push origin HEAD:main
+          git diff --cached --quiet && { echo "No changes to commit"; exit 0; }
+
+          git commit -m "chore(release): bump image.tag to ${TAG}"
+          git push origin main
