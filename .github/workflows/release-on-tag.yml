@@ -3,7 +3,7 @@ name: Release on tag (build image + bump Argo image.tag)
 on:
   push:
     tags:
-      - 'v*.*.*'
+      - "v*.*.*"
 
 env:
   IMAGE_REPO: taskin87/lab-microservice
@@ -17,6 +17,7 @@ jobs:
       contents: write
 
     steps:
+      # 1) TAG üzerinden checkout (build bu source ile yapılacak)
       - name: Checkout (tag)
         uses: actions/checkout@v4
         with:
@@ -40,12 +41,13 @@ jobs:
           tags: |
             ${{ env.IMAGE_REPO }}:${{ env.TAG }}
 
-      # ÖNEMLİ: Dosyayı tag commit'inde değil, main üzerinde güncelle!
-      - name: Switch to main branch (guaranteed)
-        run: |
-          set -e
-          git fetch origin main:refs/remotes/origin/main
-          git checkout -B main origin/main
+      # 2) Şimdi MAIN'i checkout et (detached HEAD bitti)
+      - name: Checkout (main)
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: true
 
       - name: Update Argo Application parameter image.tag (on main)
         run: |
@@ -74,6 +76,4 @@ jobs:
 
           git add "${APP_FILE}"
           git commit -m "chore(release): deploy ${TAG}" || echo "No changes to commit"
-
-          # tag workflow'larında safest push şekli:
           git push origin main
