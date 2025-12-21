@@ -1,0 +1,62 @@
+name: Release on tag (build image + bump Argo image.tag)
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+env:
+  IMAGE_REPO: taskin87/lab-microservice
+  APP_FILE: k8s/argocd/lab-microservice-app.yaml
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set TAG
+        run: echo "TAG=${GITHUB_REF_NAME}" >> $GITHUB_ENV
+
+      - name: Login Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build & Push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.IMAGE_REPO }}:${{ env.TAG }}
+
+      - name: Update Argo Application parameter image.tag
+        run: |
+          set -e
+          python - << 'PY'
+          import os, re
+          f = os.environ["APP_FILE"]
+          tag = os.environ["TAG"]
+          s = open(f, "r", encoding="utf-8").read()
+          pat = r'(-\s*name:\s*image\.tag\s*\n\s*value:\s*)([^\n]+)'
+          if not re.search(pat, s, flags=re.M):
+            raise SystemExit("image.tag parameter not found in " + f)
+          s = re.sub(pat, r'\g<1>'+tag, s, flags=re.M)
+          open(f, "w", encoding="utf-8").write(s)
+          print("Updated image.tag ->", tag)
+          PY
+
+      - name: Commit & push updated tag
+        run: |
+          set -e
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add "${APP_FILE}"
+          git commit -m "chore(release): deploy ${TAG}" || echo "No changes"
+          git push
