@@ -9,6 +9,11 @@ env:
   IMAGE_REPO: taskin87/lab-microservice
   APP_FILE: k8s/argocd/lab-microservice-app.yaml
 
+# Aynı anda birden fazla tag gelirse main'e commit atarken çakışmasın
+concurrency:
+  group: release-on-tag
+  cancel-in-progress: false
+
 jobs:
   release:
     runs-on: ubuntu-latest
@@ -21,13 +26,20 @@ jobs:
       - name: Set TAG
         run: echo "TAG=${GITHUB_REF_NAME}" >> $GITHUB_ENV
 
-      # 2) ÖNEMLİ: Tag değil, MAIN checkout edeceğiz (push yapabilmek için)
+      # 2) MAIN checkout (push yapabilmek için)
       - name: Checkout main
         uses: actions/checkout@v4
         with:
           ref: main
           fetch-depth: 0
           persist-credentials: true
+
+      # 2.1) MAIN'i remote ile senkronla (non-fast-forward yememek için)
+      - name: Sync main with origin
+        run: |
+          set -euo pipefail
+          git fetch origin main
+          git pull --rebase origin main
 
       # 3) Docker login
       - name: Login Docker Hub
@@ -72,10 +84,11 @@ jobs:
               print("Updated image.tag ->", tag)
           PY
 
-      # 6) Commit & push (MAIN’e)
+      # 6) Commit & push (MAIN’e) + rebase ile güvenli push
       - name: Commit & push updated tag
         run: |
           set -euo pipefail
+
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
@@ -83,4 +96,9 @@ jobs:
           git diff --cached --quiet && { echo "No changes to commit"; exit 0; }
 
           git commit -m "chore(release): bump image.tag to ${TAG}"
+
+          # Push öncesi bir kez daha remote ilerledi mi kontrol et
+          git fetch origin main
+          git pull --rebase origin main
+
           git push origin main
