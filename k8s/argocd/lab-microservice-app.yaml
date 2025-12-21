@@ -22,6 +22,7 @@ spec:
           value: taskin87/lab-microservice
         - name: image.tag
           value: v1.2.15
+  72f3dda (chore: set lab-microservice image.tag to v1.2.15)
   syncPolicy:
     automated:
       prune: true
