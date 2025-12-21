@@ -13,12 +13,11 @@ jobs:
   release:
     runs-on: ubuntu-latest
 
-    # Repo'ya commit/push yapabilmesi için şart
     permissions:
       contents: write
 
     steps:
-      - name: Checkout
+      - name: Checkout (tag)
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -41,29 +40,33 @@ jobs:
           tags: |
             ${{ env.IMAGE_REPO }}:${{ env.TAG }}
 
-      - name: Update Argo Application parameter image.tag
+      # ÖNEMLİ: Dosyayı tag commit'inde değil, main üzerinde güncelle!
+      - name: Switch to main branch (guaranteed)
+        run: |
+          set -e
+          git fetch origin main:refs/remotes/origin/main
+          git checkout -B main origin/main
+
+      - name: Update Argo Application parameter image.tag (on main)
         run: |
           set -e
           python - << 'PY'
           import os, re
           f = os.environ["APP_FILE"]
           tag = os.environ["TAG"]
+
           s = open(f, "r", encoding="utf-8").read()
           pat = r'(-\s*name:\s*image\.tag\s*\n\s*value:\s*)([^\n]+)'
+
           if not re.search(pat, s, flags=re.M):
-            raise SystemExit("image.tag parameter not found in " + f)
+              raise SystemExit("image.tag parameter not found in " + f)
+
           s = re.sub(pat, r'\g<1>' + tag, s, flags=re.M)
           open(f, "w", encoding="utf-8").write(s)
           print("Updated image.tag ->", tag)
           PY
 
-      - name: Switch to main branch
-        run: |
-          set -e
-          git fetch origin main
-          git checkout -B main origin/main
-
-      - name: Commit & push updated tag
+      - name: Commit & push updated tag (to main)
         run: |
           set -e
           git config user.name "github-actions[bot]"
@@ -72,4 +75,5 @@ jobs:
           git add "${APP_FILE}"
           git commit -m "chore(release): deploy ${TAG}" || echo "No changes to commit"
 
-          git push origin HEAD:main
+          # tag workflow'larında safest push şekli:
+          git push origin main
