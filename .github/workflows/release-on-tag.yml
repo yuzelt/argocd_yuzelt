@@ -16,16 +16,13 @@ env:
 jobs:
   release:
     runs-on: ubuntu-latest
-
     permissions:
       contents: write
 
     steps:
-      # 1) Tag adını al
       - name: Set TAG
-        run: echo "TAG=${GITHUB_REF_NAME}" >> $GITHUB_ENV
+        run: echo "TAG=${GITHUB_REF_NAME#rel-}" >> $GITHUB_ENV
 
-      # 2) MAIN checkout (push yapabilmek için)
       - name: Checkout main
         uses: actions/checkout@v4
         with:
@@ -33,14 +30,12 @@ jobs:
           fetch-depth: 0
           persist-credentials: true
 
-      # 3) Docker login
       - name: Login Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # 4) Build & push image (tag üzerinden)
       - name: Build & Push image
         uses: docker/build-push-action@v6
         with:
@@ -49,39 +44,24 @@ jobs:
           tags: |
             ${{ env.IMAGE_REPO }}:${{ env.TAG }}
 
-      # 5) values.yaml üzerinde image.tag güncelle (GitOps doğru kaynak)
       - name: Update Helm values image.tag
         run: |
           set -euo pipefail
-
-          # yq (sabit versiyon -> daha stabil)
           YQ_VERSION="v4.44.3"
           sudo curl -fsSL -o /usr/local/bin/yq "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64"
           sudo chmod +x /usr/local/bin/yq
-
-          # image.tag'i güncelle
           yq -i '.image.tag = strenv(TAG)' "${VALUES_FILE}"
-
           echo "Updated values.yaml image.tag:"
           yq '.image.tag' "${VALUES_FILE}"
-          grep -n 'tag:' "${VALUES_FILE}" || true
 
-      # 6) Commit + origin/main ile rebase + push
       - name: Commit & push updated tag
         run: |
           set -euo pipefail
-
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-
           git add "${VALUES_FILE}"
           git diff --cached --quiet && { echo "No changes to commit"; exit 0; }
-
           git commit -m "chore(release): bump image.tag to ${TAG}"
-
-          # Push yememek için: en güncel main üstüne otur
           git fetch origin main
           git rebase origin/main
-
-          # Rebase sonrası push
           git push origin HEAD:main
