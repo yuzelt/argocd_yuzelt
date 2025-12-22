@@ -3,7 +3,7 @@ name: Release on tag (build image + bump Helm values image.tag)
 on:
   push:
     tags:
-      - "v*.*.*"
+      - "rel-v*.*.*"
 
 concurrency:
   group: release-on-tag-main
