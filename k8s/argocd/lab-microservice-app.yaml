@@ -11,13 +11,9 @@ spec:
     targetRevision: main
     path: lab-microservice-chart
     helm:
-      parameters:
-        - name: namespace
-          value: lab
-        - name: image.repository
-          value: taskin87/lab-microservice
-        - name: image.tag
-          value: v1.2.36
+      valueFiles:
+        - values.yaml
+
   destination:
     server: https://kubernetes.default.svc
     namespace: lab
