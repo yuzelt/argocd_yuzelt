@@ -8,6 +8,9 @@ on:
 permissions:
   contents: write
 
+env:
+  VALUES_FILE: lab-microservice-chart/values.yaml
+
 jobs:
   release:
     runs-on: ubuntu-latest
@@ -18,37 +21,39 @@ jobs:
         with:
           ref: main
           fetch-depth: 0
+          persist-credentials: true
 
       - name: Set TAG
         run: echo "TAG=${GITHUB_REF_NAME}" >> $GITHUB_ENV
 
-      # (İstersen burada docker build + push adımların olur)
-
-      - name: Update ArgoCD Application image.tag
+      # ✅ Argo Application yerine Helm values.yaml güncelliyoruz
+      - name: Update Helm values image.tag
         run: |
-          APP_FILE="k8s/argocd/lab-microservice-app_21.12.2025.yaml"
-          TAG="${TAG}"
+          set -euo pipefail
 
-          python - << 'PY'
-import os, re
-f = os.environ["APP_FILE"]
-tag = os.environ["TAG"]
+          YQ_VERSION="v4.44.3"
+          sudo curl -fsSL -o /usr/local/bin/yq "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64"
+          sudo chmod +x /usr/local/bin/yq
 
-txt = open(f, "r", encoding="utf-8").read()
-pattern = r'(\-\s*name:\s*image\.tag\s*\n\s*value:\s*)([^\s]+)'
-new, n = re.subn(pattern, r'\1' + tag, txt, flags=re.MULTILINE)
+          yq -i '.image.tag = strenv(TAG)' "${VALUES_FILE}"
 
-if n == 0:
-    raise SystemExit("image.tag bulunamadı: " + f)
+          echo "Updated values.yaml image.tag:"
+          yq '.image.tag' "${VALUES_FILE}"
+          grep -n 'tag:' "${VALUES_FILE}" || true
 
-open(f, "w", encoding="utf-8").write(new)
-print(f"image.tag -> {tag}")
-PY
-
-      - name: Commit & push Argo app
+      - name: Commit & push values.yaml
         run: |
+          set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add k8s/argocd/lab-microservice-app_21.12.2025.yaml
-          git commit -m "chore(release): bump image.tag to ${TAG}" || echo "No changes"
-          git push origin main
+
+          git add "${VALUES_FILE}"
+          git diff --cached --quiet && { echo "No changes"; exit 0; }
+
+          git commit -m "chore(release): bump image.tag to ${TAG}"
+
+          # Remote güncel olsun diye (bot commitleri vs)
+          git fetch origin main
+          git rebase origin/main
+
+          git push origin HEAD:main
