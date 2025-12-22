@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lab-orders-service
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: lab-orders-service
+spec:
+  replicas: {{ .Values.replicaCount | default 1 }}
+  selector:
+    matchLabels:
+      app: lab-orders-service
+  template:
+    metadata:
+      labels:
+        app: lab-orders-service
+    spec:
+      containers:
+        - name: lab-orders-service
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy | default "IfNotPresent" }}
+          ports:
+            - containerPort: {{ .Values.service.targetPort | default 8080 }}
+          env:
+            - name: ASPNETCORE_ENVIRONMENT
+              value: {{ .Values.env.aspnetcoreEnvironment | default "Production" | quote }}
+          resources:
+{{- toYaml .Values.resources | nindent 12 }}
