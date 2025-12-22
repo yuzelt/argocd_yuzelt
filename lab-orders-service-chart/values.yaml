@@ -1,0 +1,23 @@
+replicaCount: 2
+
+image:
+  repository: taskin87/lab-orders-service
+  tag: "bootstrap"   # pipeline burayı SHA ile güncelleyecek
+  pullPolicy: IfNotPresent
+
+service:
+  type: NodePort
+  port: 80
+  targetPort: 8080
+  nodePort: 30082
+
+resources:
+  requests:
+    cpu: "50m"
+    memory: "64Mi"
+  limits:
+    cpu: "200m"
+    memory: "256Mi"
+
+env:
+  aspnetcoreEnvironment: "Kubernetes"
