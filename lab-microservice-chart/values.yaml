@@ -2,7 +2,7 @@ replicaCount: 3
 
 image:
   repository: taskin87/lab-microservice
-  tag: "v1.2.3"
+  tag: "v1.2.3"   # pipeline burayı güncelleyecek
   pullPolicy: IfNotPresent
 
 service:
@@ -22,4 +22,4 @@ resources:
 env:
   aspnetcoreEnvironment: "Kubernetes"
 
-namespace: "yuzelt"
+namespace: "lab"
