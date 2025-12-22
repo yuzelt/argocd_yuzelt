@@ -21,5 +21,3 @@ resources:
 
 env:
   aspnetcoreEnvironment: "Kubernetes"
-
-namespace: "lab"
