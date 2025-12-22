@@ -17,8 +17,7 @@ spec:
         - name: image.repository
           value: taskin87/lab-microservice
         - name: image.tag
-          value: __TAG__   # Action burayı dolduracak (static değil)
-
+          value: v1.2.33
   destination:
     server: https://kubernetes.default.svc
     namespace: lab
