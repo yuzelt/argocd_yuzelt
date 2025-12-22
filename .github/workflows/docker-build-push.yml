@@ -4,11 +4,12 @@ on:
   push:
     branches:
       - main
+    paths-ignore:
+      - lab-microservice-chart/values.yaml   # loop engeli (workflow'un kendi commit'i)
   workflow_dispatch:
 
 env:
   IMAGE_REPO: taskin87/lab-microservice
-  # values.yaml dosyanın yolu (repo yapına göre doğru path ver!)
   VALUES_FILE: lab-microservice-chart/values.yaml
 
 jobs:
@@ -16,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
 
     permissions:
-      contents: write  # repo'ya commit/push atmak için şart
+      contents: write  # repo'ya commit/push için şart
 
     steps:
       - name: Checkout source
@@ -58,7 +59,7 @@ jobs:
           with open(path, "r", encoding="utf-8") as f:
             s = f.read()
 
-          # values.yaml içinde ilk tag: satırını güncelle
+          # values.yaml'da ilk tag: satırını güncelle
           s2 = re.sub(r'(?m)^(\\s*tag:\\s*).*$',
                       r'\\1"' + tag + r'"',
                       s, count=1)
