@@ -2,10 +2,16 @@ name: Build+Push lab-orders-service + GitOps bump
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
     paths-ignore:
       - lab-orders-service-chart/values.yaml
   workflow_dispatch:
+
+# Aynı anda iki workflow koşup push'ta çakışmasın
+concurrency:
+  group: lab-orders-service-main
+  cancel-in-progress: false
 
 env:
   IMAGE_REPO: taskin87/lab-orders-service
@@ -18,21 +24,25 @@ jobs:
       contents: write
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout source
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
       - name: Set IMAGE_TAG
         run: echo "IMAGE_TAG=${GITHUB_SHA}" >> $GITHUB_ENV
 
-      - uses: docker/setup-buildx-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-      - uses: docker/login-action@v3
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - uses: docker/build-push-action@v6
+      - name: Build and push image
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: ./Dockerfile
@@ -43,27 +53,46 @@ jobs:
 
       - name: Update Helm values image.tag
         run: |
+          echo "Updating ${VALUES_FILE} image.tag -> ${IMAGE_TAG}"
           python - <<'PY'
           import os, re
+
           path = os.environ["VALUES_FILE"]
           tag  = os.environ["IMAGE_TAG"]
-          s = open(path, "r", encoding="utf-8").read()
+
+          with open(path, "r", encoding="utf-8") as f:
+            s = f.read()
+
+          # image bloğu içindeki tag: satırını güncelle (yorum varsa korur)
           s2 = re.sub(
             r'(?ms)(^image:\s*\n(?:[ \t].*\n)*?[ \t]*tag:\s*)(["\']?)[^"\n#]*\2',
             r'\1"' + tag + r'"',
             s,
             count=1
           )
+
           if s == s2:
             raise SystemExit(f"image.tag bulunamadı: {path}")
-          open(path, "w", encoding="utf-8").write(s2)
+
+          with open(path, "w", encoding="utf-8") as f:
+            f.write(s2)
           PY
 
-      - name: Commit and push values.yaml
+      - name: Commit and push values.yaml (rebase-safe)
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+
           git add "${VALUES_FILE}"
-          if git diff --cached --quiet; then exit 0; fi
+
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+
           git commit -m "chore: bump lab-orders-service image.tag to ${IMAGE_TAG}"
-          git push
+
+          # Remote ilerideyse rebase al (fetch-first / race condition fix)
+          git pull --rebase origin main
+
+          git push origin main
