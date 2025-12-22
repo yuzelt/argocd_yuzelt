@@ -1,4 +1,4 @@
-name: Release on tag (build image + bump Helm values image.tag)
+name: Release on tag (build image + bump Argo helm.parameters image.tag)
 
 on:
   push:
@@ -11,7 +11,7 @@ concurrency:
 
 env:
   IMAGE_REPO: taskin87/lab-microservice
-  VALUES_FILE: lab-microservice-chart/values.yaml
+  APP_FILE: k8s/argocd/lab-microservice-app.yaml
 
 jobs:
   release:
@@ -44,24 +44,45 @@ jobs:
           tags: |
             ${{ env.IMAGE_REPO }}:${{ env.TAG }}
 
-      - name: Update Helm values image.tag
+      - name: Update Argo Application helm parameter image.tag
         run: |
           set -euo pipefail
-          YQ_VERSION="v4.44.3"
-          sudo curl -fsSL -o /usr/local/bin/yq "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64"
-          sudo chmod +x /usr/local/bin/yq
-          yq -i '.image.tag = strenv(TAG)' "${VALUES_FILE}"
-          echo "Updated values.yaml image.tag:"
-          yq '.image.tag' "${VALUES_FILE}"
+
+          echo "Updating ${APP_FILE} image.tag -> ${TAG}"
+
+          # image.tag parameter satırını güncelle (value satırını)
+          sed -i -E 's|(^[[:space:]]*-[[:space:]]*name:[[:space:]]*image\.tag[[:space:]]*$\n[[:space:]]*value:[[:space:]]*).*|\1'"${TAG}"'|m' "${APP_FILE}" || true
+
+          # Eğer üstteki newline-match bazı runner'larda sorun çıkarırsa, güvenli fallback:
+          python - << 'PY'
+          import os, re
+          f = os.environ["APP_FILE"]
+          tag = os.environ["TAG"]
+          with open(f, "r", encoding="utf-8") as fp:
+              s = fp.read()
+          pat = r'(^\s*-\s*name:\s*image\.tag\s*\n\s*value:\s*)([^\n]+)\s*$'
+          if not re.search(pat, s, flags=re.M):
+              raise SystemExit(f"image.tag parameter not found in {f} (add it under spec.source.helm.parameters)")
+          s2 = re.sub(pat, r"\g<1>"+tag, s, flags=re.M)
+          with open(f, "w", encoding="utf-8") as fp:
+              fp.write(s2)
+          print("Updated image.tag ->", tag)
+          PY
+
+          echo "Result:"
+          awk 'NR>=1 && NR<=220 {print}' "${APP_FILE}" | grep -n -A1 "name: image.tag" || true
 
       - name: Commit & push updated tag
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add "${VALUES_FILE}"
+
+          git add "${APP_FILE}"
           git diff --cached --quiet && { echo "No changes to commit"; exit 0; }
+
           git commit -m "chore(release): bump image.tag to ${TAG}"
+
           git fetch origin main
           git rebase origin/main
           git push origin HEAD:main
