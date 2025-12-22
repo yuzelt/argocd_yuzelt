@@ -16,7 +16,7 @@ if (app.Environment.IsDevelopment())
 }
 
 // Basit root endpoint (release testi)
-app.MapGet("/", () => "Lab microservice is running - release v1.2.19");
+app.MapGet("/", () => "Lab microservice is running - release v1.2.20");
 
 // Health endpoint
 app.MapGet("/health", () =>
