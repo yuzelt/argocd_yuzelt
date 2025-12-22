@@ -1,9 +1,7 @@
-name: Build and Push Docker image (SemVer)
+name: Build and Push Docker image (manual)
 
 on:
-  push:
-    tags:
-      - "v*.*.*"
+  workflow_dispatch:
 
 jobs:
   build-and-push:
