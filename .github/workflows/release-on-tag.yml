@@ -53,13 +53,18 @@ jobs:
       - name: Update Helm values image.tag
         run: |
           set -euo pipefail
-          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+
+          # yq (sabit versiyon -> daha stabil)
+          YQ_VERSION="v4.44.3"
+          sudo curl -fsSL -o /usr/local/bin/yq "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64"
           sudo chmod +x /usr/local/bin/yq
 
+          # image.tag'i güncelle
           yq -i '.image.tag = strenv(TAG)' "${VALUES_FILE}"
 
-          echo "Updated values.yaml:"
-          grep -n 'tag:' "${VALUES_FILE}"
+          echo "Updated values.yaml image.tag:"
+          yq '.image.tag' "${VALUES_FILE}"
+          grep -n 'tag:' "${VALUES_FILE}" || true
 
       # 6) Commit + origin/main ile rebase + push
       - name: Commit & push updated tag
