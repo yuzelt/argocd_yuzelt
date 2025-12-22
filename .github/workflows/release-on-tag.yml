@@ -48,29 +48,30 @@ jobs:
         run: |
           set -euo pipefail
 
-          echo "Updating ${APP_FILE} image.tag -> ${TAG}"
-
-          # image.tag parameter satırını güncelle (value satırını)
-          sed -i -E 's|(^[[:space:]]*-[[:space:]]*name:[[:space:]]*image\.tag[[:space:]]*$\n[[:space:]]*value:[[:space:]]*).*|\1'"${TAG}"'|m' "${APP_FILE}" || true
-
-          # Eğer üstteki newline-match bazı runner'larda sorun çıkarırsa, güvenli fallback:
           python - << 'PY'
           import os, re
+
           f = os.environ["APP_FILE"]
           tag = os.environ["TAG"]
+
           with open(f, "r", encoding="utf-8") as fp:
               s = fp.read()
-          pat = r'(^\s*-\s*name:\s*image\.tag\s*\n\s*value:\s*)([^\n]+)\s*$'
+
+          # Inline comment olsa bile value satırını güncelle
+          pat = r'(^\s*-\s*name:\s*image\.tag\s*\n\s*value:\s*)([^\n]+)'
           if not re.search(pat, s, flags=re.M):
               raise SystemExit(f"image.tag parameter not found in {f} (add it under spec.source.helm.parameters)")
+
           s2 = re.sub(pat, r"\g<1>"+tag, s, flags=re.M)
+
           with open(f, "w", encoding="utf-8") as fp:
               fp.write(s2)
+
           print("Updated image.tag ->", tag)
           PY
 
           echo "Result:"
-          awk 'NR>=1 && NR<=220 {print}' "${APP_FILE}" | grep -n -A1 "name: image.tag" || true
+          grep -n "name: image.tag" -A1 "${APP_FILE}" || true
 
       - name: Commit & push updated tag
         run: |
