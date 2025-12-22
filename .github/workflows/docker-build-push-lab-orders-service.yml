@@ -1,0 +1,69 @@
+name: Build+Push lab-orders-service + GitOps bump
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - lab-orders-service-chart/values.yaml
+  workflow_dispatch:
+
+env:
+  IMAGE_REPO: taskin87/lab-orders-service
+  VALUES_FILE: lab-orders-service-chart/values.yaml
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set IMAGE_TAG
+        run: echo "IMAGE_TAG=${GITHUB_SHA}" >> $GITHUB_ENV
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: |
+            ${{ env.IMAGE_REPO }}:main
+            ${{ env.IMAGE_REPO }}:${{ env.IMAGE_TAG }}
+
+      - name: Update Helm values image.tag
+        run: |
+          python - <<'PY'
+          import os, re
+          path = os.environ["VALUES_FILE"]
+          tag  = os.environ["IMAGE_TAG"]
+          s = open(path, "r", encoding="utf-8").read()
+          s2 = re.sub(
+            r'(?ms)(^image:\s*\n(?:[ \t].*\n)*?[ \t]*tag:\s*)(["\']?)[^"\n#]*\2',
+            r'\1"' + tag + r'"',
+            s,
+            count=1
+          )
+          if s == s2:
+            raise SystemExit(f"image.tag bulunamadı: {path}")
+          open(path, "w", encoding="utf-8").write(s2)
+          PY
+
+      - name: Commit and push values.yaml
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add "${VALUES_FILE}"
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "chore: bump lab-orders-service image.tag to ${IMAGE_TAG}"
+          git push
