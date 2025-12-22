@@ -15,8 +15,8 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-// Basit root endpoint
-app.MapGet("/", () => "Lab microservice is running");
+// Basit root endpoint (release testi)
+app.MapGet("/", () => "Lab microservice is running - release v1.2.19");
 
 // Health endpoint
 app.MapGet("/health", () =>
