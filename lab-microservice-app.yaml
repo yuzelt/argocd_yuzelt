@@ -11,13 +11,10 @@ spec:
     targetRevision: main
     path: lab-microservice-chart
     helm:
-      parameters:
-        - name: namespace
-          value: lab
-        - name: image.repository
-          value: taskin87/lab-microservice
-        - name: image.tag
-          value: __TAG__   # GitHub Action burayı her rel-v* tag'inde güncelleyecek
+      # Yol A: values.yaml source of truth.
+      # Burada parameters KULLANMIYORUZ.
+      valueFiles:
+        - values.yaml
 
   destination:
     server: https://kubernetes.default.svc
