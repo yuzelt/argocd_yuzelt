@@ -5,7 +5,7 @@ on:
     branches:
       - main
     paths-ignore:
-      - lab-microservice-chart/values.yaml   # loop engeli (workflow'un kendi commit'i)
+      - lab-microservice-chart/values.yaml
   workflow_dispatch:
 
 env:
@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
 
     permissions:
-      contents: write  # repo'ya commit/push için şart
+      contents: write
 
     steps:
       - name: Checkout source
@@ -59,13 +59,17 @@ jobs:
           with open(path, "r", encoding="utf-8") as f:
             s = f.read()
 
-          # values.yaml'da ilk tag: satırını güncelle
-          s2 = re.sub(r'(?m)^(\\s*tag:\\s*).*$',
-                      r'\\1"' + tag + r'"',
-                      s, count=1)
+          # image bloğu içindeki "tag:" satırını güncelle (yorum varsa korur)
+          # örn: tag: "v1.2.18"   # pipeline burayı güncelleyecek
+          s2 = re.sub(
+            r'(?ms)(^image:\s*\n(?:[ \t].*\n)*?[ \t]*tag:\s*)(["\']?)[^"\n#]*\2',
+            r'\1"' + tag + r'"',
+            s,
+            count=1
+          )
 
           if s == s2:
-            raise SystemExit(f"tag: satırı bulunamadı: {path}")
+            raise SystemExit(f"image.tag satırı bulunamadı: {path}")
 
           with open(path, "w", encoding="utf-8") as f:
             f.write(s2)
