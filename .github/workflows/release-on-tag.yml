@@ -1,4 +1,4 @@
-name: Release on tag (build image + bump Argo image.tag)
+name: Release on tag (build image + bump Helm values image.tag)
 
 on:
   push:
@@ -11,7 +11,7 @@ concurrency:
 
 env:
   IMAGE_REPO: taskin87/lab-microservice
-  APP_FILE: k8s/argocd/lab-microservice-app.yaml
+  VALUES_FILE: lab-microservice-chart/values.yaml
 
 jobs:
   release:
@@ -49,32 +49,17 @@ jobs:
           tags: |
             ${{ env.IMAGE_REPO }}:${{ env.TAG }}
 
-      # 5) MAIN üzerinde dosyayı güncelle
-      - name: Update Argo Application parameter image.tag
+      # 5) values.yaml üzerinde image.tag güncelle (GitOps doğru kaynak)
+      - name: Update Helm values image.tag
         run: |
           set -euo pipefail
-          python - << 'PY'
-          import os, re
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
 
-          f = os.environ["APP_FILE"]
-          tag = os.environ["TAG"]
+          yq -i '.image.tag = strenv(TAG)' "${VALUES_FILE}"
 
-          with open(f, "r", encoding="utf-8") as fp:
-              s = fp.read()
-
-          pat = r'(^\s*-\s*name:\s*image\.tag\s*\n\s*value:\s*)([^\n]+)\s*$'
-          if not re.search(pat, s, flags=re.M):
-              raise SystemExit(f"image.tag parameter not found in {f}")
-
-          s2 = re.sub(pat, r"\g<1>"+tag, s, flags=re.M)
-
-          if s2 == s:
-              print("No change needed (already same tag).")
-          else:
-              with open(f, "w", encoding="utf-8") as fp:
-                  fp.write(s2)
-              print("Updated image.tag ->", tag)
-          PY
+          echo "Updated values.yaml:"
+          grep -n 'tag:' "${VALUES_FILE}"
 
       # 6) Commit + origin/main ile rebase + push
       - name: Commit & push updated tag
@@ -84,7 +69,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          git add "${APP_FILE}"
+          git add "${VALUES_FILE}"
           git diff --cached --quiet && { echo "No changes to commit"; exit 0; }
 
           git commit -m "chore(release): bump image.tag to ${TAG}"
