@@ -1,0 +1,31 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: lab-microservice
+  namespace: argocd
+spec:
+  project: default
+
+  source:
+    repoURL: https://github.com/yuzelt/argocd_yuzelt.git
+    targetRevision: main
+    path: lab-microservice-chart
+    helm:
+      parameters:
+        - name: namespace
+          value: lab
+        - name: image.repository
+          value: taskin87/lab-microservice
+        - name: image.tag
+          value: __TAG__   # GitHub Action burayı her rel-v* tag'inde güncelleyecek
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: lab
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
