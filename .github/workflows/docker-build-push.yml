@@ -1,6 +1,9 @@
-name: Build and Push Docker image (manual)
+name: Build and Push Docker image (main push + manual)
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
@@ -27,4 +30,5 @@ jobs:
           file: ./Dockerfile
           push: true
           tags: |
-            taskin87/lab-microservice:${{ github.ref_name }}
+            taskin87/lab-microservice:main
+            taskin87/lab-microservice:${{ github.sha }}
