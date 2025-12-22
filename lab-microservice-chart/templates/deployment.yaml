@@ -5,11 +5,13 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     app: lab-microservice
+
 spec:
-  replicas: {{ .Values.replicaCount }}
+  replicas: {{ .Values.replicaCount | default 1 }}
   selector:
     matchLabels:
       app: lab-microservice
+
   template:
     metadata:
       labels:
@@ -18,16 +20,14 @@ spec:
       containers:
         - name: lab-microservice
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          imagePullPolicy: {{ .Values.image.pullPolicy | default "IfNotPresent" }}
+
           ports:
-            - containerPort: {{ .Values.service.targetPort }}
+            - containerPort: {{ .Values.service.targetPort | default 8080 }}
+
           env:
             - name: ASPNETCORE_ENVIRONMENT
-              value: "{{ .Values.env.aspnetcoreEnvironment }}"
+              value: {{ .Values.env.aspnetcoreEnvironment | default "Production" | quote }}
+
           resources:
-            requests:
-              cpu: {{ .Values.resources.requests.cpu }}
-              memory: {{ .Values.resources.requests.memory }}
-            limits:
-              cpu: {{ .Values.resources.limits.cpu }}
-              memory: {{ .Values.resources.limits.memory }}
+{{- toYaml .Values.resources | nindent 12 }}
