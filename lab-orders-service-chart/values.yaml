@@ -2,7 +2,7 @@ replicaCount: 2
 
 image:
   repository: taskin87/lab-orders-service
-  tag: "6a3027b7b508cb149a754a4f55b9e39911a84d2a"   # pipeline burayı SHA ile güncelleyecek
+  tag: "b3ae7608dd035d84334d1333a396b20d3ce523b7"   # pipeline burayı SHA ile güncelleyecek
   pullPolicy: IfNotPresent
 
 service:
