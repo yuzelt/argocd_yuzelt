@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: monitoring
+  name: kube-prometheus-stack
   namespace: argocd
 spec:
   project: default
@@ -9,17 +9,22 @@ spec:
   source:
     repoURL: https://prometheus-community.github.io/helm-charts
     chart: kube-prometheus-stack
-    targetRevision: 58.7.2   # örnek, istersen latest
+    targetRevision: 58.6.0
     helm:
-      releaseName: monitoring
+      releaseName: kube-prometheus-stack
       values: |
         grafana:
           enabled: true
           adminPassword: admin
+          service:
+            type: ClusterIP
 
         prometheus:
-          prometheusSpec:
-            retention: 7d
+          service:
+            type: ClusterIP
+
+        alertmanager:
+          enabled: true
 
   destination:
     server: https://kubernetes.default.svc
