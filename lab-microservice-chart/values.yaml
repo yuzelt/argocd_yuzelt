@@ -2,7 +2,7 @@ replicaCount: 3
 
 image:
   repository: taskin87/lab-microservice
-  tag: "6283bae124b1ef59984f21164c160b9756750111"   # pipeline burayı güncelleyecek
+  tag: "57e511f4462a2781b5af94c9423e8d576255ce83"   # pipeline burayı güncelleyecek
   pullPolicy: IfNotPresent
 
 service:
