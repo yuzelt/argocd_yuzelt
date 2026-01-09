@@ -12,6 +12,7 @@ spec:
     targetRevision: 58.6.0
     helm:
       releaseName: kube-prometheus-stack
+      skipCrds: false   # <<< EKLENDİ: CRD'leri kesin kursun diye
       values: |
         grafana:
           enabled: true
