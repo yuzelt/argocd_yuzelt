@@ -5,16 +5,26 @@ metadata:
   namespace: argocd
 spec:
   project: default
+
   source:
-    repoURL: <SENIN_GIT_REPO_URL>
-    targetRevision: main
-    path: observability/kube-prometheus-stack
+    repoURL: https://prometheus-community.github.io/helm-charts
+    chart: kube-prometheus-stack
+    targetRevision: 58.7.2   # örnek, istersen latest
     helm:
-      valueFiles:
-        - values.yaml
+      releaseName: monitoring
+      values: |
+        grafana:
+          enabled: true
+          adminPassword: admin
+
+        prometheus:
+          prometheusSpec:
+            retention: 7d
+
   destination:
     server: https://kubernetes.default.svc
     namespace: observability
+
   syncPolicy:
     automated:
       prune: true
